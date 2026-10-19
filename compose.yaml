@@ -1,0 +1,37 @@
+name: bara-birthday
+services:
+  birthday:
+    build: .
+    # For a Linux VPS with native Nginx. The app binds only to host loopback.
+    network_mode: host
+    environment:
+      NODE_ENV: production
+      HOST: 127.0.0.1
+      PORT: 3180
+      APP_ORIGIN: https://bara.lixionary.com
+      DATA_DIR: /app/data
+      TRUST_PROXY: "1"
+    volumes:
+      - birthday-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3180/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+volumes:
+  birthday-data:

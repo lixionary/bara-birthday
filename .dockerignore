@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+.env.*
+data
+docs
+.qa
+test-results
+playwright-report
+*.tsbuildinfo
+.DS_Store

@@ -1,0 +1,244 @@
+{
+  "birthday": {
+    "recipient": "Bara",
+    "sender": "Felix",
+    "title": "Departemen Ulang Tahun Bara",
+    "welcome": {
+      "eyebrow": "PAKET ULANG TAHUN · KHUSUS BARA",
+      "headingLead": "Hari ini,",
+      "headingMiddle": "semuanya tentang",
+      "description": "Ada paket ulang tahun atas nama Bara. Isinya beberapa kejutan, sedikit kekacauan, dan tim Bara yang kelakuannya agak meragukan.",
+      "button": "Iya, aku Bara 👑",
+      "note": "Dikerjakan oleh tim yang terlalu niat. Silakan maklum."
+    },
+    "stages": [
+      "Selamat datang",
+      "Mood Bara",
+      "Kado rahasia",
+      "Studio kue",
+      "Bikin harapan",
+      "Pesan buat Bara"
+    ],
+    "moods": [
+      {
+        "id": "cute",
+        "name": "Bara gemas",
+        "sticker": "bara_cute",
+        "label": "si paling gemas",
+        "message": "Bara ini sudah siap difoto. Tinggal pilih satu dari 37 foto yang sebenarnya mirip semua."
+      },
+      {
+        "id": "angry",
+        "name": "Bara marah",
+        "sticker": "bara_angry",
+        "label": "butuh kue dulu",
+        "message": "Tim menyarankan: jangan ajak debat Bara yang ini sebelum ada makanan. Demi kelancaran acara."
+      },
+      {
+        "id": "sleepy",
+        "name": "Bara mengantuk",
+        "sticker": "bara_sleepy",
+        "label": "lima menit lagi",
+        "message": "Katanya lima menit lagi. Departemen belum berhasil memastikan lima menit yang mana. Izin rebahan disetujui."
+      },
+      {
+        "id": "cool",
+        "name": "Bara keren",
+        "sticker": "bara_cool",
+        "label": "main character",
+        "message": "Bara ini kelihatannya sudah punya rencana. Kita yang lain cukup ikut dan jangan banyak tanya."
+      },
+      {
+        "id": "hahaha",
+        "name": "Bara tertawa",
+        "sticker": "bara_hahaha",
+        "label": "ketawa dulu",
+        "message": "Bara ini sudah ketawa duluan sebelum selesai cerita. Detail ceritanya menyusul kalau sudah bisa napas."
+      },
+      {
+        "id": "panic",
+        "name": "Bara panik",
+        "sticker": "bara_panic",
+        "label": "kok ada surprise?!",
+        "message": "Tenang, nggak ada ujian dan nggak perlu bikin akun. Cuma website ulang tahun yang pembuatnya kebanyakan ide."
+      }
+    ],
+    "gifts": [
+      {
+        "id": "love",
+        "number": "01",
+        "title": "Satu fakta penting",
+        "subtitle": "isinya bikin senyum",
+        "sticker": "bara_cute",
+        "message": "Hari ini Bara resmi boleh memilih mau makan apa. Jawaban “terserah” akan dikembalikan untuk direvisi."
+      },
+      {
+        "id": "joke",
+        "number": "02",
+        "title": "Pengumuman resmi",
+        "subtitle": "agak mencurigakan",
+        "sticker": "bara_told_you",
+        "message": "Departemen menyatakan: Bara selalu benar. Jika Bara salah, silakan baca pengumuman ini dari awal. Keputusan tidak bisa diganggu gugat."
+      },
+      {
+        "id": "wish",
+        "number": "03",
+        "title": "Doa kecil untukmu",
+        "subtitle": "nggak perlu dibalas amin di grup",
+        "sticker": "bara_approved",
+        "message": "Semoga sehat terus, urusannya lancar, dan lebih banyak waktu buat hal-hal yang kamu suka. Bonus: makanan enak dan tidur yang cukup."
+      }
+    ],
+    "letter": [
+      "Bara, selamat ulang tahun! Kartu ucapan biasa rasanya kurang seru, jadi dibikinlah website ini. Sekarang ulang tahunmu punya departemen sendiri.",
+      "Semoga sehat terus, makin banyak alasan buat ketawa, dan punya waktu buat hal-hal yang kamu suka. Termasuk rebahan tanpa merasa harus produktif.",
+      "Semoga rencana-rencanamu berjalan lancar. Kalau ada yang belum beres, satu-satu aja. Hari ini nggak semuanya harus dipikirin.",
+      "Oke, cukup pidatonya. Selamat ulang tahun, Bara! Semoga kamu enjoy main di sini. Kalau kuenya kurang absurd, boleh balik ke studio dan tambah hiasan lagi."
+    ],
+    "ending": "Urusan website beres. Sekarang tinggal cari kue beneran."
+  },
+  "copy": {
+    "brandNote": "divisi kue, kado, dan hal random",
+    "headerNote": "Bara ulang tahun. Tim siap bertugas.",
+    "soundOn": "Suara aktif",
+    "soundOff": "Tanpa suara",
+    "soundUnavailable": "Suara tidak tersedia",
+    "skip": "Langsung ke petualangan",
+    "progress": "Langkah petualangan",
+    "step": "Langkah",
+    "of": "dari",
+    "footer": "Dibuat oleh",
+    "footerNote": "Terlalu niat · jangan terlalu serius",
+    "welcomeStamp": "PAKET ATAS NAMA BARA",
+    "welcomePhoto": "Bara, sebelum buka paket",
+    "welcomeTag": "special delivery!",
+    "welcomeMini": "isi paket: agak random",
+    "welcomeAside": "Tim Bara sudah siap. Kurang lebih.",
+    "return": "Kembali",
+    "continue": "Lanjut",
+    "moods": {
+      "eyebrow": "01 / CEK MOOD BARA",
+      "heading": "Bara yang mana hari ini?",
+      "description": "Pilih 3 mood Bara buat hari ini. Setiap pilihan punya pesan sendiri. Berubah pikiran? Ketuk lagi untuk batal pilih.",
+      "hint": "Mau ganti pilihan? Ketuk mood yang sudah dipilih dulu.",
+      "limit": "Sudah pilih 3 mood. Batalkan salah satu kalau mau ganti.",
+      "count": "mood dipilih",
+      "instruction": "Pilih mood Bara untuk membuka pesannya. Pilih 3 untuk lanjut.",
+      "continue": "Intip kado rahasia",
+      "collected": "Mood dipilih"
+    },
+    "gifts": {
+      "eyebrow": "02 / DIVISI KEJUTAN",
+      "heading": "Tiga kado. Isinya agak random.",
+      "description": "Tim Bara sudah menyiapkan sesuatu. Buka semuanya, ya. Yang sudah dibuka boleh diintip lagi.",
+      "open": "Buka kado",
+      "reread": "Baca lagi",
+      "count": "kado sudah dibuka",
+      "continue": "Saatnya bikin kue"
+    },
+    "cake": {
+      "eyebrow": "03 / STUDIO KUE BARA",
+      "heading": "Kue kamu. Aturan kamu.",
+      "description": "Pilih hiasan, lalu ketuk kuenya. Mau cantik atau absurd? Dua-duanya sah.",
+      "palette": "Kotak hiasan",
+      "select": "Pilih hiasan",
+      "keyboard": "Pakai keyboard? Enter di kue untuk menaruh hiasan di tengah.",
+      "surface": "Kue ulang tahun; ketuk atau tekan Enter untuk menaruh hiasan",
+      "undo": "Undo",
+      "reset": "Reset",
+      "chaos": "Tambah kekacauan",
+      "done": "Mahakarya selesai",
+      "count": "hiasan",
+      "limit": "Kuenya penuh! Undo atau Reset untuk menghias lagi.",
+      "added": "Hiasan ditambahkan.",
+      "cleared": "Kue kembali bersih.",
+      "removed": "Hiasan terakhir dihapus.",
+      "optional": "Kue ube digital. Warna ungunya serius, kalorinya nggak.",
+      "topNote": "ube party!"
+    },
+    "candles": {
+      "eyebrow": "04 / SATU HARAPAN KECIL",
+      "heading": "Pejamkan mata sebentar…",
+      "description": "Pikirkan satu harapan. Nggak perlu diketik, departemen nggak ikut campur. Kalau sudah, tiup lilinnya.",
+      "blow": "Tiup lilinnya",
+      "blown": "Lilin sudah padam. Semoga harapanmu kejadian!",
+      "next": "Ada surat untukmu",
+      "caption": "Kue digital. Kalorinya juga digital."
+    },
+    "letter": {
+      "eyebrow": "05 / PESAN DARI FELIX",
+      "heading": "Sebentar, ada ucapan dulu.",
+      "description": "Tenang, bukan pidato panjang. Cuma empat halaman pendek.",
+      "greeting": "Bara,",
+      "next": "Baca selanjutnya",
+      "finish": "Lihat kejutan terakhir",
+      "page": "Halaman",
+      "envelope": "ucapan wajib dari operator"
+    },
+    "finale": {
+      "eyebrow": "MISI SELESAI · SAATNYA MAKAN KUE",
+      "heading": "Selamat ulang tahun,",
+      "description": "Semoga harinya seru, makanannya enak, dan nggak ada yang bikin ribet.",
+      "signature": "Dari operator website,",
+      "revisit": "Mau main lagi?",
+      "restart": "Ulang dari awal",
+      "reread": "Baca surat lagi",
+      "activities": [
+        "Main sama Bara",
+        "Intip kado",
+        "Hias kue",
+        "Lihat lilin"
+      ]
+    }
+  },
+  "decorations": [
+    {
+      "id": "heart",
+      "name": "Hati",
+      "symbol": "♥"
+    },
+    {
+      "id": "star",
+      "name": "Bintang",
+      "symbol": "★"
+    },
+    {
+      "id": "cute",
+      "name": "Bara gemas",
+      "sticker": "bara_cute"
+    },
+    {
+      "id": "cool",
+      "name": "Bara keren",
+      "sticker": "bara_cool"
+    },
+    {
+      "id": "wow",
+      "name": "Bara takjub",
+      "sticker": "bara_wow"
+    },
+    {
+      "id": "mouse",
+      "name": "Bara dan boneka",
+      "sticker": "bara_mouse"
+    },
+    {
+      "id": "ube",
+      "name": "Ube",
+      "symbol": "🍠"
+    },
+    {
+      "id": "ube-flower",
+      "name": "Bunga ungu",
+      "symbol": "✿"
+    },
+    {
+      "id": "ube-cream",
+      "name": "Krim ube",
+      "symbol": "🧁"
+    }
+  ],
+  "settings": {
+    "age": 30
+  }
+}
