@@ -21,11 +21,14 @@ export type Action =
   | { type: "TOGGLE_MOOD"; id: string }
   | { type: "OPEN"; id: string }
   | { type: "DECORATE"; decoration: Decoration }
+  | { type: "MOVE_DECORATION"; index: number; x: number; y: number }
   | { type: "UNDO" }
   | { type: "CLEAR_CAKE" }
   | { type: "FINISH_CAKE" }
   | { type: "BLOW" }
+  | { type: "RELIGHT" }
   | { type: "NEXT_LETTER" }
+  | { type: "PREV_LETTER" }
   | { type: "RESTART" };
 
 export function initialState(): BirthdayState {
@@ -101,6 +104,25 @@ export function reducer(state: BirthdayState, action: Action): BirthdayState {
         validDecoration(action.decoration)
         ? { ...state, decorations: [...state.decorations, action.decoration] }
         : state;
+    case "MOVE_DECORATION": {
+      if (
+        state.stage !== 3 ||
+        !Number.isInteger(action.index) ||
+        action.index < 0 ||
+        action.index >= state.decorations.length ||
+        !Number.isFinite(action.x) ||
+        action.x < 0 ||
+        action.x > 1 ||
+        !Number.isFinite(action.y) ||
+        action.y < 0 ||
+        action.y > 1
+      )
+        return state;
+      const updated = state.decorations.map((d, idx) =>
+        idx === action.index ? { ...d, x: action.x, y: action.y } : d,
+      );
+      return { ...state, decorations: updated };
+    }
     case "UNDO":
       return state.stage === 3
         ? { ...state, decorations: state.decorations.slice(0, -1) }
@@ -113,6 +135,8 @@ export function reducer(state: BirthdayState, action: Action): BirthdayState {
         : state;
     case "BLOW":
       return state.stage === 4 ? { ...state, candlesBlown: true } : state;
+    case "RELIGHT":
+      return state.stage === 4 ? { ...state, candlesBlown: false } : state;
     case "NEXT_LETTER": {
       if (state.stage !== 5 || state.letterIndex >= birthday.letter.length)
         return state;
@@ -121,6 +145,18 @@ export function reducer(state: BirthdayState, action: Action): BirthdayState {
         ...state,
         letterIndex,
         completed: state.completed || letterIndex === birthday.letter.length,
+      };
+    }
+    case "PREV_LETTER": {
+      if (
+        state.stage !== 5 ||
+        state.letterIndex <= 0 ||
+        state.letterIndex >= birthday.letter.length
+      )
+        return state;
+      return {
+        ...state,
+        letterIndex: state.letterIndex - 1,
       };
     }
   }

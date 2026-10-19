@@ -119,6 +119,7 @@ test("full journey, refresh recovery, decorations, rereading, and restart", asyn
   await openGifts(page);
   await assertLayout(page);
   await expect(page.locator(".candle-digit")).toHaveText(["3", "0"]);
+  await expect(page.locator(".flame").first()).toHaveCSS("opacity", "0");
   await mkdir(".qa", { recursive: true });
   await page.screenshot({
     path: `.qa/ube-cake-${info.project.name}.png`,
@@ -162,6 +163,13 @@ test("full journey, refresh recovery, decorations, rereading, and restart", asyn
     fullPage: true,
     animations: "disabled",
   });
+  // Tap the first candle ("3") directly; "0" stays lit until blown out
+  await page.getByRole("button", { name: "Lilin angka 3" }).click();
+  await expect(page.locator(".flame").first()).toHaveCSS("opacity", "0");
+  await expect(page.locator(".flame").nth(1)).toHaveCSS(
+    "animation-name",
+    "flame-dance",
+  );
   await page.getByRole("button", { name: "Tiup lilinnya" }).click();
   for (const flame of await page.locator(".flame").all())
     await expect(flame).toHaveCSS("opacity", "0");
@@ -172,8 +180,21 @@ test("full journey, refresh recovery, decorations, rereading, and restart", asyn
   await expect(
     page.getByRole("status").filter({ hasText: "Lilin sudah padam" }),
   ).toBeVisible();
+  // Relight candles and blow both out by tapping "3" and "0" directly
+  await page.getByRole("button", { name: "↺ Nyalakan lagi" }).click();
+  await expect(page.locator(".flame").first()).toHaveCSS(
+    "animation-name",
+    "flame-dance",
+  );
+  await page.getByRole("button", { name: "Lilin angka 3" }).click();
+  await page.getByRole("button", { name: "Lilin angka 0" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Lilin sudah padam" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Ada surat untukmu" }).click();
   await assertLayout(page);
+  await page.getByRole("button", { name: "Baca selanjutnya" }).click();
+  await page.getByRole("button", { name: "← Sebelumnya" }).click();
   for (let i = 0; i < 3; i++)
     await page.getByRole("button", { name: "Baca selanjutnya" }).click();
   await page.getByRole("button", { name: "Lihat kejutan terakhir" }).click();

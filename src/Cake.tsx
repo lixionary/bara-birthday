@@ -1,12 +1,34 @@
 import { settings, copy } from "./content/birthday";
 
-export default function Cake({ blown = false }: { blown?: boolean }) {
+export type CakeProps = {
+  blown?: boolean;
+  unlit?: boolean;
+  blownDigits?: boolean[];
+  onBlowDigit?: (index: number) => void;
+  bouncing?: boolean;
+  flameTilt?: number;
+};
+
+export default function Cake({
+  blown = false,
+  unlit = false,
+  blownDigits,
+  onBlowDigit,
+  bouncing = false,
+  flameTilt = 0,
+}: CakeProps) {
   const digits = String(settings.age).split("");
+  const allBlown =
+    blown ||
+    (Array.isArray(blownDigits) &&
+      blownDigits.length === digits.length &&
+      blownDigits.every(Boolean));
+  const interactiveCandles = Boolean(onBlowDigit) && !unlit && !allBlown;
 
   return (
     <div
-      className={`cake-art ube-cake ${blown ? "blown" : ""}`}
-      aria-hidden="true"
+      className={`cake-art ube-cake ${allBlown ? "blown" : ""} ${unlit ? "unlit" : ""} ${bouncing ? "cake-bouncing" : ""}`}
+      aria-hidden={interactiveCandles ? undefined : "true"}
     >
       {/* 3D Illustrated SVG Ube Cake */}
       <svg
@@ -14,6 +36,7 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
         viewBox="0 0 420 300"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
       >
         <defs>
           <radialGradient
@@ -24,8 +47,8 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
             fx="50%"
             fy="50%"
           >
-            <stop offset="0%" stopColor="#3d1b33" stopOpacity="0.25" />
-            <stop offset="65%" stopColor="#3d1b33" stopOpacity="0.1" />
+            <stop offset="0%" stopColor="#3d1b33" stopOpacity="0.28" />
+            <stop offset="65%" stopColor="#3d1b33" stopOpacity="0.11" />
             <stop offset="100%" stopColor="#3d1b33" stopOpacity="0" />
           </radialGradient>
 
@@ -71,8 +94,8 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
 
           <linearGradient id="frosting-glaze" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="60%" stopColor="#fbf0fd" />
-            <stop offset="100%" stopColor="#ecd3f0" />
+            <stop offset="55%" stopColor="#fbf0fd" />
+            <stop offset="100%" stopColor="#e8c8ee" />
           </linearGradient>
 
           <radialGradient
@@ -81,8 +104,14 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
             cy="40%"
             r="60%"
           >
-            <stop offset="0%" stopColor={blown ? "#fcf3fd" : "#fff8ea"} />
-            <stop offset="45%" stopColor={blown ? "#f8e9fb" : "#faebfa"} />
+            <stop
+              offset="0%"
+              stopColor={allBlown || unlit ? "#fcf3fd" : "#fff7e2"}
+            />
+            <stop
+              offset="45%"
+              stopColor={allBlown || unlit ? "#f8e9fb" : "#fae8f8"}
+            />
             <stop offset="80%" stopColor="#eccff0" />
             <stop offset="100%" stopColor="#dfbedf" />
           </radialGradient>
@@ -92,12 +121,36 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
             <stop offset="45%" stopColor="#f3ddf8" />
             <stop offset="100%" stopColor="#c59bd0" />
           </linearGradient>
+
+          <linearGradient id="gold-trim" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#e5b968" />
+            <stop offset="50%" stopColor="#fff1c1" />
+            <stop offset="100%" stopColor="#d19d47" />
+          </linearGradient>
         </defs>
 
         {/* 1. Serving plate */}
         <ellipse cx="210" cy="256" rx="195" ry="32" fill="url(#plate-shadow)" />
-        <ellipse cx="210" cy="248" rx="190" ry="28" fill="url(#plate-grad)" stroke="url(#plate-rim)" strokeWidth="3" />
-        <ellipse cx="210" cy="246" rx="174" ry="23" fill="none" stroke="#e8d7ea" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.75" />
+        <ellipse
+          cx="210"
+          cy="248"
+          rx="190"
+          ry="28"
+          fill="url(#plate-grad)"
+          stroke="url(#plate-rim)"
+          strokeWidth="3"
+        />
+        <ellipse
+          cx="210"
+          cy="246"
+          rx="174"
+          ry="23"
+          fill="none"
+          stroke="url(#gold-trim)"
+          strokeWidth="1.5"
+          strokeDasharray="5 3"
+          opacity="0.85"
+        />
 
         {/* 2. Cake Body Sponge & Cream Layers */}
         <g className="cake-layers">
@@ -105,6 +158,16 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
           <path
             d="M 60,185 L 60,230 C 60,248 127,260 210,260 C 293,260 360,248 360,230 L 360,185 Z"
             fill="url(#sponge-bottom)"
+          />
+
+          {/* Bottom Scalloped Gold & Cream Base Trim */}
+          <path
+            d="M 62,230 Q 85,244 110,238 Q 135,250 160,243 Q 185,254 210,246 Q 235,254 260,243 Q 285,250 310,238 Q 335,244 358,230"
+            fill="none"
+            stroke="url(#cream-layer)"
+            strokeWidth="5"
+            strokeLinecap="round"
+            opacity="0.92"
           />
 
           {/* Bottom Cream Ribbon */}
@@ -131,19 +194,19 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
             fill="url(#sponge-top)"
           />
 
-          {/* Sponge Texture Accents */}
-          <g opacity="0.6">
-            <circle cx="110" cy="225" r="1.5" fill="#fdf0ff" />
-            <circle cx="170" cy="235" r="1.2" fill="#fdf0ff" />
-            <circle cx="250" cy="238" r="1.5" fill="#fdf0ff" />
-            <circle cx="310" cy="226" r="1.2" fill="#fdf0ff" />
-            <circle cx="130" cy="192" r="1.2" fill="#ffeaf5" />
-            <circle cx="210" cy="196" r="1.5" fill="#ffeaf5" />
-            <circle cx="290" cy="194" r="1.2" fill="#ffeaf5" />
-            <circle cx="95" cy="155" r="1.5" fill="#fdf0ff" />
-            <circle cx="190" cy="160" r="1.2" fill="#fdf0ff" />
-            <circle cx="270" cy="158" r="1.5" fill="#fdf0ff" />
-            <circle cx="330" cy="150" r="1.2" fill="#fdf0ff" />
+          {/* Sponge Texture & Golden Sugar Pearls */}
+          <g opacity="0.75">
+            <circle cx="110" cy="225" r="1.8" fill="#fdf0ff" />
+            <circle cx="170" cy="235" r="1.5" fill="#ffe9a8" />
+            <circle cx="250" cy="238" r="1.8" fill="#fdf0ff" />
+            <circle cx="310" cy="226" r="1.5" fill="#ffe9a8" />
+            <circle cx="130" cy="192" r="1.5" fill="#ffeaf5" />
+            <circle cx="210" cy="196" r="1.8" fill="#ffe9a8" />
+            <circle cx="290" cy="194" r="1.5" fill="#ffeaf5" />
+            <circle cx="95" cy="155" r="1.6" fill="#fdf0ff" />
+            <circle cx="190" cy="160" r="1.4" fill="#ffe9a8" />
+            <circle cx="270" cy="158" r="1.6" fill="#fdf0ff" />
+            <circle cx="330" cy="150" r="1.4" fill="#ffe9a8" />
           </g>
 
           {/* 3D depth shadows on lateral sides */}
@@ -205,6 +268,17 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
           strokeWidth="1.5"
         />
 
+        {/* Animated Glaze Specular Sheen */}
+        <ellipse
+          className="cake-glaze-sheen"
+          cx="195"
+          cy="108"
+          rx="92"
+          ry="14"
+          fill="#ffffff"
+          opacity="0.35"
+        />
+
         {/* Delicate decorative dashed oval */}
         <ellipse
           cx="210"
@@ -235,7 +309,7 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
             { cx: 125, cy: 96 },
           ].map((pos, idx) => (
             <g key={idx} transform={`translate(${pos.cx}, ${pos.cy})`}>
-              <circle cx="0" cy="0" r="7.5" fill="url(#rosette-grad)" />
+              <circle cx="0" cy="0" r="8" fill="url(#rosette-grad)" />
               <path
                 d="M -3.5,-1.5 C -1.5,-5 2.5,-4 3.5,-1.5 C 4.5,1 1.5,3.5 -1,3.5 C -3.5,3.5 -5,1 -3.5,-1.5"
                 fill="none"
@@ -243,7 +317,12 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
                 strokeWidth="1.2"
                 strokeLinecap="round"
               />
-              <circle cx="0" cy="-0.5" r="1.8" fill={idx % 2 === 0 ? "#ffffff" : "#fbe5ba"} />
+              <circle
+                cx="0"
+                cy="-0.5"
+                r="2"
+                fill={idx % 2 === 0 ? "#ffffff" : "#f7d486"}
+              />
             </g>
           ))}
         </g>
@@ -275,46 +354,120 @@ export default function Cake({ blown = false }: { blown?: boolean }) {
         <span className="cake-top-note">{copy.cake.topNote}</span>
       </div>
       <div className="cake-body sr-only" aria-hidden="true">
-        <div className="icing"><i /><i /><i /></div>
+        <div className="icing">
+          <i />
+          <i />
+          <i />
+        </div>
         <div className="ube-layer" />
         <div className="cake-sprinkles">✦ ✧ ✦ ✧</div>
       </div>
       <div className="cake-base sr-only" aria-hidden="true" />
       <div className="cake-plate sr-only" aria-hidden="true" />
 
-      {/* Number Candles with Realistic Flame & Smoke */}
-      <div className="candles number-candles">
-        {digits.map((digit, i) => (
-          <div key={i} className={`number-candle number-${digit}`}>
-            {/* Candle glow (warm ambient radial illumination) */}
-            <span className="candle-glow" />
+      {/* 3D Sculpted Number Candles ("30") with Interactive Flame, Wax Glow & Smoke */}
+      <div
+        className="candles number-candles"
+        style={
+          flameTilt
+            ? ({ "--flame-tilt": `${flameTilt}deg` } as React.CSSProperties)
+            : undefined
+        }
+      >
+        {digits.map((digit, i) => {
+          const digitBlown = allBlown || Boolean(blownDigits?.[i]);
+          const canTapThisCandle = interactiveCandles && !digitBlown;
+          return (
+            <div
+              key={i}
+              className={`number-candle number-${digit} ${digitBlown ? "candle-blown" : ""} ${canTapThisCandle ? "candle-interactive" : ""}`}
+              role={canTapThisCandle ? "button" : undefined}
+              tabIndex={canTapThisCandle ? 0 : undefined}
+              aria-label={
+                canTapThisCandle ? `Lilin angka ${digit}` : undefined
+              }
+              onClick={
+                canTapThisCandle
+                  ? (e) => {
+                      e.stopPropagation();
+                      onBlowDigit?.(i);
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                canTapThisCandle
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onBlowDigit?.(i);
+                      }
+                    }
+                  : undefined
+              }
+            >
+              {/* Warm ambient radial illumination */}
+              <span className="candle-glow" aria-hidden="true" />
 
-            {/* Smoke wisps on extinguish */}
-            <span className="smoke smoke-one" />
-            <span className="smoke smoke-two" />
+              {/* Ignition sparkler stars when entering Stage 4 */}
+              {!unlit && !digitBlown && (
+                <span className="candle-sparkler" aria-hidden="true">
+                  <i>✦</i>
+                  <i>✧</i>
+                  <i>✦</i>
+                </span>
+              )}
 
-            {/* Animated Flame */}
-            <span className="flame">
-              <span />
-            </span>
+              {/* Breeze puff burst on extinguish */}
+              <span className="wind-puff" aria-hidden="true" />
 
-            {/* Candle Wick */}
-            <span className="wick" />
+              {/* Triple curling smoke wisps on extinguish */}
+              <span className="smoke smoke-one" aria-hidden="true" />
+              <span className="smoke smoke-two" aria-hidden="true" />
+              <span className="smoke smoke-three" aria-hidden="true" />
 
-            {/* 3D Illustrated Candle Digit */}
-            <span className="candle-digit">{digit}</span>
+              {/* Animated Flame */}
+              <span className="flame" aria-hidden="true">
+                <span />
+              </span>
 
-            {/* Cake insertion stick */}
-            <span className="candle-stick" />
-          </div>
-        ))}
+              {/* Candle Wick with warm glowing ember */}
+              <span className="wick" aria-hidden="true">
+                <span className="wick-ember" />
+              </span>
+
+              {/* 3D Sculpted Wax Digit with Melted Wax Drips & Subsurface Glow */}
+              <span className="candle-body">
+                <span className="candle-wax-glow" aria-hidden="true" />
+                <span className="wax-drip drip-left" aria-hidden="true" />
+                <span className="wax-drip drip-right" aria-hidden="true" />
+                <span className="candle-digit">{digit}</span>
+              </span>
+
+              {/* Festive Gold-Trimmed Wax Holder Base */}
+              <span className="candle-holder" aria-hidden="true" />
+
+              {/* Cake insertion stick */}
+              <span className="candle-stick" aria-hidden="true" />
+            </div>
+          );
+        })}
       </div>
 
       {/* Ambient and celebration sparkles */}
-      <div className="cake-sparkle sparkle-one">✦</div>
-      <div className="cake-sparkle sparkle-two">✧</div>
-      <div className="cake-sparkle sparkle-three">✳</div>
-      <div className="cake-sparkle sparkle-four">✧</div>
+      <div className="cake-sparkle sparkle-one" aria-hidden="true">
+        ✦
+      </div>
+      <div className="cake-sparkle sparkle-two" aria-hidden="true">
+        ✧
+      </div>
+      <div className="cake-sparkle sparkle-three" aria-hidden="true">
+        ✳
+      </div>
+      <div className="cake-sparkle sparkle-four" aria-hidden="true">
+        ✧
+      </div>
     </div>
   );
 }
+

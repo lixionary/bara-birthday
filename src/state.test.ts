@@ -96,7 +96,42 @@ describe("birthday journey", () => {
       decoration: { id: "star", x: Infinity, y: 0.5, rotation: 0 },
     });
     expect(invalid).toEqual(state);
+    state = reducer(state, {
+      type: "MOVE_DECORATION",
+      index: 0,
+      x: 0.72,
+      y: 0.44,
+    });
+    expect(state.decorations[0]).toEqual({
+      id: "heart",
+      x: 0.72,
+      y: 0.44,
+      rotation: 0,
+    });
+    expect(
+      reducer(state, {
+        type: "MOVE_DECORATION",
+        index: 99,
+        x: 0.5,
+        y: 0.5,
+      }),
+    ).toEqual(state);
     expect(reducer(state, { type: "CLEAR_CAKE" }).decorations).toEqual([]);
+  });
+
+  it("supports relighting candles and navigating back and forth in the letter", () => {
+    let state = reducer(reachCake(), { type: "FINISH_CAKE" });
+    state = reducer(state, { type: "BLOW" });
+    expect(state.candlesBlown).toBe(true);
+    state = reducer(state, { type: "RELIGHT" });
+    expect(state.candlesBlown).toBe(false);
+    state = reducer(state, { type: "BLOW" });
+    state = reducer(state, { type: "GO", stage: 5 });
+    expect(reducer(state, { type: "PREV_LETTER" }).letterIndex).toBe(0);
+    state = reducer(state, { type: "NEXT_LETTER" });
+    expect(state.letterIndex).toBe(1);
+    state = reducer(state, { type: "PREV_LETTER" });
+    expect(state.letterIndex).toBe(0);
   });
 });
 
