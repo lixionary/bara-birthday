@@ -93,7 +93,7 @@ export async function createBirthdayServer(options = {}) {
       "X-Frame-Options": "SAMEORIGIN",
       "Referrer-Policy": "no-referrer",
       "X-Robots-Tag": "noindex, nofollow, noarchive",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
       "Content-Security-Policy": `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'${production ? "" : " ws: http://localhost:5173 http://127.0.0.1:5173"}; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'none'; form-action 'self'`,
     };
     for (const [key, value] of Object.entries(headers))

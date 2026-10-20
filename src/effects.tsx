@@ -21,7 +21,10 @@ export type SoundEffect =
   | "blow"
   | "sparkle"
   | "celebrate"
-  | "melody";
+  | "melody"
+  | "rattle"
+  | "wax"
+  | "sparkler";
 
 export function useSound() {
   const [enabled, setEnabled] = useState(false);
@@ -29,12 +32,52 @@ export function useSound() {
   const context = useRef<AudioContext | null>(null);
   const muted = useRef(true);
   const popStep = useRef(0);
+  const musicStep = useRef(0);
+
   useEffect(
     () => () => {
       void context.current?.close().catch(() => undefined);
     },
     [],
   );
+
+  // Gentle music-box arpeggio loop while sound is enabled
+  useEffect(() => {
+    if (!enabled) return;
+    const musicNotes = [
+      523.25, 659.25, 783.99, 987.77, 783.99, 659.25, 587.33, 783.99, 880.0,
+      1046.5, 880.0, 783.99,
+    ];
+    const timer = window.setInterval(() => {
+      if (
+        muted.current ||
+        !context.current ||
+        context.current.state !== "running"
+      )
+        return;
+      try {
+        const ctx = context.current;
+        const freq = musicNotes[musicStep.current % musicNotes.length];
+        musicStep.current += 1;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const start = ctx.currentTime + 0.01;
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.018, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0005, start + 0.42);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.45);
+      } catch {
+        /* Ignore background music box errors */
+      }
+    }, 520);
+    return () => window.clearInterval(timer);
+  }, [enabled]);
+
   function toggle() {
     if (!muted.current) {
       muted.current = true;
@@ -106,6 +149,28 @@ export function useSound() {
         popStep.current += 1;
         playTone(base * 0.85, 0, 0.14, 0.09, "triangle", base * 1.25);
         playTone(base * 1.5, 0.04, 0.12, 0.045, "sine");
+        return;
+      }
+
+      if (mode === "rattle") {
+        [420, 560, 480, 640].forEach((f, i) => {
+          playTone(f, i * 0.045, 0.08, 0.055, "triangle", f * 1.15);
+        });
+        return;
+      }
+
+      if (mode === "wax") {
+        playTone(310, 0, 0.11, 0.08, "triangle", 620);
+        [783.99, 987.77, 1318.51, 1567.98].forEach((f, i) => {
+          playTone(f, 0.08 + i * 0.055, 0.22, 0.06, "sine");
+        });
+        return;
+      }
+
+      if (mode === "sparkler") {
+        [1174.66, 1567.98, 1975.53, 2349.32, 2637.02].forEach((f, i) => {
+          playTone(f, i * 0.04, 0.14, 0.05, "sine", f * 0.92);
+        });
         return;
       }
 
@@ -255,4 +320,413 @@ export function Confetti({ burst }: { burst: number }) {
     );
   return <canvas ref={canvas} className="confetti" aria-hidden="true" />;
 }
+
+export type MicStatus = "idle" | "listening" | "denied" | "unavailable";
+
+export function useMicBlow({
+  active,
+  onBlowFirst,
+  onBlowAll,
+}: {
+  active: boolean;
+  onBlowFirst: () => void;
+  onBlowAll: () => void;
+}) {
+  const [supported] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      Boolean(navigator.mediaDevices?.getUserMedia) &&
+      typeof window !== "undefined" &&
+      typeof window.AudioContext !== "undefined",
+  );
+  const [status, setStatus] = useState<MicStatus>(() =>
+    supported ? "idle" : "unavailable",
+  );
+  const [level, setLevel] = useState(0);
+
+  const streamRef = useRef<MediaStream | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const frameRef = useRef<number>(0);
+  const grantedSessionRef = useRef(false);
+  const firstTriggeredRef = useRef(false);
+  const blowProgressRef = useRef(0);
+  const onBlowFirstRef = useRef(onBlowFirst);
+  const onBlowAllRef = useRef(onBlowAll);
+  onBlowFirstRef.current = onBlowFirst;
+  onBlowAllRef.current = onBlowAll;
+
+  function stop() {
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (ctxRef.current) {
+      void ctxRef.current.close().catch(() => undefined);
+      ctxRef.current = null;
+    }
+    blowProgressRef.current = 0;
+    firstTriggeredRef.current = false;
+    setLevel(0);
+    setStatus((prev) => (prev === "listening" ? "idle" : prev));
+  }
+
+  async function start() {
+    if (!supported || !active || streamRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
+      if (!active) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      grantedSessionRef.current = true;
+      streamRef.current = stream;
+      const ctx = new AudioContext();
+      ctxRef.current = ctx;
+      await ctx.resume().catch(() => undefined);
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.45;
+      source.connect(analyser);
+
+      const timeData = new Uint8Array(analyser.fftSize);
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
+      blowProgressRef.current = 0;
+      firstTriggeredRef.current = false;
+      setStatus("listening");
+
+      let last = performance.now();
+      const tick = (now: number) => {
+        if (!streamRef.current || !ctxRef.current) return;
+        const dt = Math.min(now - last, 50);
+        last = now;
+
+        analyser.getByteTimeDomainData(timeData);
+        analyser.getByteFrequencyData(freqData);
+
+        let sumSq = 0;
+        for (let i = 0; i < timeData.length; i++) {
+          const sample = (timeData[i] - 128) / 128;
+          sumSq += sample * sample;
+        }
+        const rms = Math.sqrt(sumSq / timeData.length);
+
+        let lowFreqSum = 0;
+        const bins = Math.min(18, freqData.length);
+        for (let i = 0; i < bins; i++) {
+          lowFreqSum += freqData[i] / 255;
+        }
+        const lowFreqAvg = bins > 0 ? lowFreqSum / bins : 0;
+
+        const raw = Math.max(rms * 3.4, lowFreqAvg * 1.35);
+        const normalized = Math.min(1, Math.max(0, (raw - 0.06) / 0.34));
+        setLevel(normalized);
+
+        if (normalized >= 0.32) {
+          blowProgressRef.current += normalized * (dt / 16.67);
+          if (blowProgressRef.current >= 4 && !firstTriggeredRef.current) {
+            firstTriggeredRef.current = true;
+            onBlowFirstRef.current();
+          }
+          if (blowProgressRef.current >= 9.5) {
+            onBlowAllRef.current();
+            stop();
+            return;
+          }
+        } else {
+          blowProgressRef.current = Math.max(
+            0,
+            blowProgressRef.current - 0.14 * (dt / 16.67),
+          );
+        }
+
+        frameRef.current = requestAnimationFrame(tick);
+      };
+
+      frameRef.current = requestAnimationFrame(tick);
+    } catch {
+      setStatus("denied");
+      stop();
+    }
+  }
+
+  useEffect(() => {
+    if (!active || !supported) {
+      stop();
+      return;
+    }
+    let cancelled = false;
+    // If already granted in this session or via browser permissions API, auto-start!
+    if (grantedSessionRef.current) {
+      void start();
+    } else if (navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "microphone" as PermissionName })
+        .then((res) => {
+          if (!cancelled && res.state === "granted") {
+            void start();
+          }
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [active, supported]);
+
+  return {
+    supported,
+    status,
+    listening: status === "listening",
+    level,
+    start,
+    stop,
+  };
+}
+
+type StardustParticle = {
+  id: number;
+  x: number;
+  y: number;
+  symbol: string;
+  color: string;
+  dx: number;
+};
+
+const STARDUST_SYMBOLS = ["✦", "✧", "♡", "⋆"];
+const STARDUST_COLORS = ["#b87fd0", "#d49a2a", "#bd637b", "#8f4f9d"];
+
+export function StardustTrail() {
+  const reduced = useReducedMotion();
+  const [motes, setMotes] = useState<StardustParticle[]>([]);
+  const lastSpawnRef = useRef(0);
+  const idRef = useRef(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    const spawn = (clientX: number, clientY: number, force = false) => {
+      const now = performance.now();
+      if (!force && now - lastSpawnRef.current < 55) return;
+      lastSpawnRef.current = now;
+      const id = ++idRef.current;
+      const mote: StardustParticle = {
+        id,
+        x: clientX,
+        y: clientY,
+        symbol: STARDUST_SYMBOLS[id % STARDUST_SYMBOLS.length],
+        color: STARDUST_COLORS[id % STARDUST_COLORS.length],
+        dx: ((id * 13) % 24) - 12,
+      };
+      setMotes((prev) => [...prev.slice(-14), mote]);
+      window.setTimeout(() => {
+        setMotes((prev) => prev.filter((item) => item.id !== id));
+      }, 650);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (e.clientX <= 0 && e.clientY <= 0) return;
+      spawn(e.clientX, e.clientY, false);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (e.clientX <= 0 && e.clientY <= 0) return;
+      spawn(e.clientX, e.clientY, true);
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onDown);
+    };
+  }, [reduced]);
+
+  if (reduced || motes.length === 0) return null;
+
+  return (
+    <div className="stardust-layer" aria-hidden="true">
+      {motes.map((m) => (
+        <span
+          key={m.id}
+          className="stardust-mote"
+          style={{
+            left: `${m.x}px`,
+            top: `${m.y}px`,
+            color: m.color,
+            ["--sdx" as string]: `${m.dx}px`,
+          }}
+        >
+          {m.symbol}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function downloadPolaroidKeepsake({
+  recipient,
+  sender,
+  age,
+  moodLabels,
+  decorations,
+}: {
+  recipient: string;
+  sender: string;
+  age: number;
+  moodLabels: string[];
+  decorations: { id: string; x: number; y: number }[];
+}): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 720;
+    canvas.height = 900;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return false;
+
+    // Outer Polaroid paper
+    ctx.fillStyle = "#fffaf4";
+    ctx.fillRect(0, 0, 720, 900);
+    ctx.strokeStyle = "#e3d1e8";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, 714, 894);
+
+    // Inner photo frame
+    const px = 48,
+      py = 52,
+      pw = 624,
+      ph = 600;
+    const bgGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    bgGrad.addColorStop(0, "#f8eefc");
+    bgGrad.addColorStop(1, "#fdf5ea");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(px, py, pw, ph);
+    ctx.strokeStyle = "#decbe4";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, pw, ph);
+
+    // Subtle sparkles in backdrop
+    ctx.fillStyle = "#d49a2a";
+    ctx.font = "22px Georgia, serif";
+    ctx.fillText("✦", px + 46, py + 58);
+    ctx.fillText("✧", px + pw - 68, py + 72);
+    ctx.fillStyle = "#bd637b";
+    ctx.fillText("♡", px + 68, py + 150);
+    ctx.fillText("♡", px + pw - 82, py + 165);
+
+    // Plate
+    ctx.fillStyle = "#f2e8f5";
+    ctx.beginPath();
+    ctx.ellipse(360, py + 478, 220, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bottom ube tier
+    ctx.fillStyle = "#6e3b82";
+    ctx.beginPath();
+    ctx.roundRect(180, py + 340, 360, 126, 22);
+    ctx.fill();
+
+    // Middle ube tier
+    ctx.fillStyle = "#824998";
+    ctx.beginPath();
+    ctx.roundRect(215, py + 235, 290, 112, 20);
+    ctx.fill();
+
+    // Top ube tier
+    ctx.fillStyle = "#9559ac";
+    ctx.beginPath();
+    ctx.roundRect(250, py + 148, 220, 96, 18);
+    ctx.fill();
+
+    // White chocolate glaze on top tier
+    ctx.fillStyle = "#fff8ee";
+    ctx.beginPath();
+    ctx.roundRect(248, py + 142, 224, 28, 14);
+    ctx.fill();
+
+    // Sculpted "30" candle digits on top of cake
+    ctx.font = "bold 76px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff4d9";
+    ctx.strokeStyle = "#7a3e90";
+    ctx.lineWidth = 6;
+    ctx.strokeText(String(age), 360, py + 135);
+    ctx.fillText(String(age), 360, py + 135);
+
+    // Golden flames above "3" and "0"
+    [332, 388].forEach((fx) => {
+      ctx.fillStyle = "#ffbe3b";
+      ctx.beginPath();
+      ctx.ellipse(fx, py + 56, 9, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff6cc";
+      ctx.beginPath();
+      ctx.ellipse(fx, py + 60, 4, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // User's placed decorations mapped onto the cake area
+    const symbolMap: Record<string, string> = {
+      heart: "♥",
+      star: "✦",
+      sparkle: "✧",
+      ube: "🟣",
+      "ube-flower": "✿",
+      "ube-cream": " swirl ",
+    };
+    ctx.font = "24px Georgia, serif";
+    decorations.forEach((d) => {
+      const dx = 160 + d.x * 400;
+      const dy = py + 110 + d.y * 350;
+      ctx.fillStyle = "#ffe5f0";
+      ctx.fillText(symbolMap[d.id] ?? "♡", dx, dy);
+    });
+
+    // Mood pills along bottom of photo
+    if (moodLabels.length > 0) {
+      ctx.font = "bold 16px Trebuchet MS, sans-serif";
+      ctx.fillStyle = "#6c3680";
+      ctx.fillText(moodLabels.join("  ·  "), 360, py + ph - 28);
+    }
+
+    // Polaroid caption below photo
+    ctx.fillStyle = "#5f2f70";
+    ctx.font = "italic bold 32px Georgia, serif";
+    ctx.fillText(`Selamat Ulang Tahun ke-${age}, ${recipient}! ♡`, 360, 725);
+
+    ctx.fillStyle = "#8a6d8f";
+    ctx.font = "18px Trebuchet MS, sans-serif";
+    ctx.fillText(
+      `Kue Ube Spesial (${decorations.length} dekorasi) · Dari ${sender}`,
+      360,
+      775,
+    );
+
+    ctx.fillStyle = "#bd637b";
+    ctx.font = "bold 16px Trebuchet MS, sans-serif";
+    ctx.fillText("✦ EDISI KENANGAN 30 TAHUN ✦", 360, 830);
+
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `bara-${age}th-polaroid.png`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
 

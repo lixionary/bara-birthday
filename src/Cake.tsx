@@ -5,6 +5,8 @@ export type CakeProps = {
   unlit?: boolean;
   blownDigits?: boolean[];
   onBlowDigit?: (index: number) => void;
+  onLightDigit?: (index: number) => void;
+  sparklerActive?: boolean;
   bouncing?: boolean;
   flameTilt?: number;
 };
@@ -14,6 +16,8 @@ export default function Cake({
   unlit = false,
   blownDigits,
   onBlowDigit,
+  onLightDigit,
+  sparklerActive = false,
   bouncing = false,
   flameTilt = 0,
 }: CakeProps) {
@@ -23,11 +27,12 @@ export default function Cake({
     (Array.isArray(blownDigits) &&
       blownDigits.length === digits.length &&
       blownDigits.every(Boolean));
-  const interactiveCandles = Boolean(onBlowDigit) && !unlit && !allBlown;
+  const interactiveCandles =
+    (Boolean(onBlowDigit) || Boolean(onLightDigit)) && !unlit;
 
   return (
     <div
-      className={`cake-art ube-cake ${allBlown ? "blown" : ""} ${unlit ? "unlit" : ""} ${bouncing ? "cake-bouncing" : ""}`}
+      className={`cake-art ube-cake ${allBlown ? "blown" : ""} ${unlit ? "unlit" : ""} ${bouncing ? "cake-bouncing" : ""} ${sparklerActive ? "sparkler-wand-mode" : ""}`}
       aria-hidden={interactiveCandles ? undefined : "true"}
     >
       {/* 3D Illustrated SVG Ube Cake */}
@@ -376,7 +381,11 @@ export default function Cake({
       >
         {digits.map((digit, i) => {
           const digitBlown = allBlown || Boolean(blownDigits?.[i]);
-          const canTapThisCandle = interactiveCandles && !digitBlown;
+          const canBlowThisCandle =
+            Boolean(onBlowDigit) && !unlit && !digitBlown;
+          const canLightThisCandle =
+            Boolean(onLightDigit) && !unlit && digitBlown;
+          const canTapThisCandle = canBlowThisCandle || canLightThisCandle;
           return (
             <div
               key={i}
@@ -384,13 +393,21 @@ export default function Cake({
               role={canTapThisCandle ? "button" : undefined}
               tabIndex={canTapThisCandle ? 0 : undefined}
               aria-label={
-                canTapThisCandle ? `Lilin angka ${digit}` : undefined
+                canBlowThisCandle
+                  ? `Lilin angka ${digit}`
+                  : canLightThisCandle
+                    ? `Nyalakan lilin angka ${digit}`
+                    : undefined
               }
               onClick={
                 canTapThisCandle
                   ? (e) => {
                       e.stopPropagation();
-                      onBlowDigit?.(i);
+                      if (canLightThisCandle) {
+                        onLightDigit?.(i);
+                      } else if (!sparklerActive) {
+                        onBlowDigit?.(i);
+                      }
                     }
                   : undefined
               }
@@ -400,7 +417,11 @@ export default function Cake({
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         e.stopPropagation();
-                        onBlowDigit?.(i);
+                        if (canLightThisCandle) {
+                          onLightDigit?.(i);
+                        } else {
+                          onBlowDigit?.(i);
+                        }
                       }
                     }
                   : undefined

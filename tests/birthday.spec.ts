@@ -180,8 +180,12 @@ test("full journey, refresh recovery, decorations, rereading, and restart", asyn
   await expect(
     page.getByRole("status").filter({ hasText: "Lilin sudah padam" }),
   ).toBeVisible();
-  // Relight candles and blow both out by tapping "3" and "0" directly
-  await page.getByRole("button", { name: "↺ Nyalakan lagi" }).click();
+  // Relight candles using the Sparkler Wand ("🪄 Nyalakan pakai korek ajaib")
+  await page
+    .getByRole("button", { name: "🪄 Nyalakan pakai korek ajaib" })
+    .click();
+  await page.getByRole("button", { name: "Nyalakan lilin angka 3" }).click();
+  await page.getByRole("button", { name: "Nyalakan lilin angka 0" }).click();
   await expect(page.locator(".flame").first()).toHaveCSS(
     "animation-name",
     "flame-dance",
@@ -193,6 +197,10 @@ test("full journey, refresh recovery, decorations, rereading, and restart", asyn
   ).toBeVisible();
   await page.getByRole("button", { name: "Ada surat untukmu" }).click();
   await assertLayout(page);
+  await page.getByRole("button", { name: "Segel lilin B 30" }).click();
+  await expect(page.locator(".wax-secret-note")).toContainText(
+    "Selamat kepala tiga, Bara!",
+  );
   await page.getByRole("button", { name: "Baca selanjutnya" }).click();
   await page.getByRole("button", { name: "← Sebelumnya" }).click();
   for (let i = 0; i < 3; i++)
@@ -200,6 +208,13 @@ test("full journey, refresh recovery, decorations, rereading, and restart", asyn
   await page.getByRole("button", { name: "Lihat kejutan terakhir" }).click();
   await expect(
     page.getByRole("heading", { name: "Selamat ulang tahun, Bara!" }),
+  ).toBeVisible();
+  await expect(page.locator(".finale-polaroid")).toBeVisible();
+  await page
+    .getByRole("button", { name: "📸 Simpan Polaroid Kenangan" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "✓ Polaroid tersimpan!" }),
   ).toBeVisible();
   await assertLayout(page);
   await page.getByRole("button", { name: "Baca surat lagi" }).click();
@@ -271,3 +286,97 @@ test("reduced motion and keyboard placement work without storage or audio", asyn
   await expect(page.locator(".static-confetti")).toBeVisible();
   await assertLayout(page);
 });
+
+test("blowing into microphone extinguishes candles when available", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __micTrackStopped?: boolean }).__micTrackStopped =
+      false;
+    const fakeStream = {
+      getTracks: () => [
+        {
+          stop: () => {
+            (
+              window as unknown as { __micTrackStopped?: boolean }
+            ).__micTrackStopped = true;
+          },
+        },
+      ],
+    };
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => fakeStream,
+      },
+    });
+    class FakeAudioContext {
+      state = "running";
+      async resume() {}
+      async close() {}
+      createMediaStreamSource() {
+        return { connect() {} };
+      }
+      createAnalyser() {
+        return {
+          fftSize: 256,
+          smoothingTimeConstant: 0.4,
+          frequencyBinCount: 128,
+          getByteTimeDomainData(arr: Uint8Array) {
+            for (let i = 0; i < arr.length; i++) {
+              arr[i] = i % 2 === 0 ? 220 : 36;
+            }
+          },
+          getByteFrequencyData(arr: Uint8Array) {
+            arr.fill(190);
+          },
+        };
+      }
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+          connect() {},
+          start() {},
+          stop() {},
+        };
+      }
+      createGain() {
+        return {
+          gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+          connect() {},
+        };
+      }
+      currentTime = 0;
+      destination = {};
+    }
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: FakeAudioContext,
+    });
+  });
+
+  await page.goto("/");
+  await collectMoods(page);
+  await openGifts(page);
+  await page.getByRole("button", { name: "Mahakarya selesai" }).click();
+
+  const micBtn = page.getByRole("button", { name: "🎙️ Pakai mikrofon" });
+  await expect(micBtn).toBeVisible();
+  await micBtn.click();
+
+  await expect(
+    page.getByRole("status").filter({ hasText: "Lilin sudah padam" }),
+  ).toBeVisible();
+  for (const flame of await page.locator(".flame").all()) {
+    await expect(flame).toHaveCSS("opacity", "0");
+  }
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { __micTrackStopped?: boolean })
+          .__micTrackStopped,
+    ),
+  ).toBe(true);
+});
+

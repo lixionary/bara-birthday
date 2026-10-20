@@ -23,7 +23,13 @@ import {
   unlockedStage,
   type Stage,
 } from "./state";
-import { Confetti, useSound } from "./effects";
+import {
+  Confetti,
+  StardustTrail,
+  downloadPolaroidKeepsake,
+  useMicBlow,
+  useSound,
+} from "./effects";
 import Cake from "./Cake";
 
 function Sticker({
@@ -84,6 +90,8 @@ export default function App({
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [selectedGift, setSelectedGift] = useState<string | null>(null);
   const [justOpenedGift, setJustOpenedGift] = useState<string | null>(null);
+  const [shakingGifts, setShakingGifts] = useState(false);
+  const [giftHint, setGiftHint] = useState<string | null>(null);
   const [tool, setTool] = useState<string>("heart");
   const [announcement, setAnnouncement] = useState("");
   const [burst, setBurst] = useState(0);
@@ -116,15 +124,23 @@ export default function App({
   } | null>(null);
   const suppressNextClickRef = useRef(false);
 
-  // Stage 4 individual candle state & flame tilt
+  // Stage 4 individual candle state, flame tilt & sparkler wand
   const digitCount = String(settings.age).length;
   const [blownDigits, setBlownDigits] = useState<boolean[]>(() =>
     Array(digitCount).fill(state.candlesBlown),
   );
   const [flameTilt, setFlameTilt] = useState(0);
+  const [sparklerWand, setSparklerWand] = useState(false);
+  const [sparklerPos, setSparklerPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const skipBlowSyncRef = useRef(false);
 
-  // Stage 5 letter page flip direction
+  // Stage 5 letter page flip direction, wax seal & finale polaroid
   const [letterDir, setLetterDir] = useState<"next" | "prev">("next");
+  const [waxSealBroken, setWaxSealBroken] = useState(false);
+  const [polaroidSaved, setPolaroidSaved] = useState(false);
 
   const title = useRef<HTMLHeadingElement>(null);
   const previousStage = useRef(state.stage);
@@ -138,6 +154,10 @@ export default function App({
   }, [state, preview]);
 
   useEffect(() => {
+    if (skipBlowSyncRef.current) {
+      skipBlowSyncRef.current = false;
+      return;
+    }
     setBlownDigits(Array(digitCount).fill(state.candlesBlown));
   }, [state.candlesBlown, digitCount]);
 
@@ -151,11 +171,14 @@ export default function App({
       setSelectedMood(null);
       setSelectedGift(null);
       setJustOpenedGift(null);
+      setGiftHint(null);
       setAnnouncement("");
       setBurst(0);
       setCursorPos(null);
       setPlacementBurst(null);
       setFlameTilt(0);
+      setSparklerWand(false);
+      setSparklerPos(null);
       if (state.stage === 4 && !state.candlesBlown) {
         sound.play("sparkle");
       }
@@ -292,11 +315,24 @@ export default function App({
     addDecoration(normX, normY);
   }
 
+  function handleShakeGifts() {
+    setShakingGifts(false);
+    requestAnimationFrame(() => setShakingGifts(true));
+    sound.play("rattle");
+    const unopenedCount = birthday.gifts.length - state.opened.length;
+    setGiftHint(
+      unopenedCount > 0
+        ? `Kado bergemerincing! Masih ada ${unopenedCount} kado rahasia — tarik pitanya untuk membuka ✨`
+        : "Semua kado sudah dibuka! Ketuk kartu mana saja untuk membaca ulang ♡",
+    );
+  }
+
   function handleBlowDigit(index: number) {
     if (state.candlesBlown || blownDigits[index]) return;
     const next = blownDigits.map((b, i) => (i === index ? true : b));
     setBlownDigits(next);
     if (next.every(Boolean)) {
+      setSparklerWand(false);
       dispatch({ type: "BLOW" });
       setBurst((n) => n + 1);
       sound.play("melody");
@@ -306,7 +342,28 @@ export default function App({
     }
   }
 
+  function handleLightDigit(index: number) {
+    if (!blownDigits[index] && !state.candlesBlown) return;
+    const base = state.candlesBlown
+      ? Array(digitCount).fill(true)
+      : blownDigits;
+    const next = base.map((b, i) => (i === index ? false : b));
+    if (state.candlesBlown) {
+      skipBlowSyncRef.current = true;
+      dispatch({ type: "RELIGHT" });
+    }
+    setBlownDigits(next);
+    sound.play("sparkler");
+    if (next.every((b) => !b)) {
+      setSparklerWand(false);
+      setAnnouncement("Semua lilin menyala kembali!");
+    } else {
+      setAnnouncement("Satu lilin menyala! Nyalakan satu lagi.");
+    }
+  }
+
   function handleBlowAll() {
+    setSparklerWand(false);
     setBlownDigits(Array(digitCount).fill(true));
     dispatch({ type: "BLOW" });
     setBurst((n) => n + 1);
@@ -314,11 +371,35 @@ export default function App({
   }
 
   function handleRelight() {
+    setSparklerWand(false);
     dispatch({ type: "RELIGHT" });
     setBlownDigits(Array(digitCount).fill(false));
     sound.play("sparkle");
     setAnnouncement("Lilin dinyalakan kembali.");
   }
+
+  function handleStartSparklerLighting() {
+    skipBlowSyncRef.current = true;
+    if (state.candlesBlown) {
+      dispatch({ type: "RELIGHT" });
+    }
+    setBlownDigits(Array(digitCount).fill(true));
+    setSparklerWand(true);
+    sound.play("sparkler");
+    setAnnouncement("Korek ajaib siap! Sentuh lilin 3 dan 0 untuk menyalakannya.");
+  }
+
+  const mic = useMicBlow({
+    active: !preview && state.stage === 4 && !state.candlesBlown,
+    onBlowFirst: () => {
+      const firstLit = blownDigits.findIndex((b) => !b);
+      if (firstLit !== -1) handleBlowDigit(firstLit);
+    },
+    onBlowAll: handleBlowAll,
+  });
+
+  const breathTilt =
+    mic.listening && mic.level > 0.04 ? Math.round(mic.level * 18) : 0;
 
   const mood = birthday.moods.find((m) => m.id === selectedMood);
   const gift = birthday.gifts.find((g) => g.id === selectedGift);
@@ -343,6 +424,7 @@ export default function App({
 
   return (
     <div className="app-shell">
+      {!preview && <StardustTrail />}
       <a className="skip-link" href="#adventure">
         {copy.skip}
       </a>
@@ -620,17 +702,22 @@ export default function App({
                     {birthday.gifts.map((g, i) => {
                       const isOpened = state.opened.includes(g.id);
                       const isJustOpened = justOpenedGift === g.id;
+                      const isShaking = shakingGifts && !isOpened;
                       return (
                         <button
                           type="button"
-                          className={`gift-card gift-${i} ${isOpened ? "opened" : ""} ${isJustOpened ? "just-opened" : ""} ${selectedGift === g.id ? "selected" : ""}`}
+                          className={`gift-card gift-${i} ${isOpened ? "opened" : ""} ${isJustOpened ? "just-opened" : ""} ${isShaking ? "gift-shaking" : ""} ${selectedGift === g.id ? "selected" : ""}`}
                           key={g.id}
                           aria-pressed={selectedGift === g.id}
+                          onAnimationEnd={() => {
+                            if (isShaking) setShakingGifts(false);
+                          }}
                           onClick={() => {
                             const firstTime = !isOpened;
                             dispatch({ type: "OPEN", id: g.id });
                             setSelectedGift(g.id);
                             setJustOpenedGift(g.id);
+                            setGiftHint(null);
                             sound.play(firstTime ? "unwrap" : "pop");
                           }}
                         >
@@ -642,6 +729,8 @@ export default function App({
                                 aria-hidden="true"
                               >
                                 <i className="fx-lid" />
+                                <i className="fx-ribbon-left" />
+                                <i className="fx-ribbon-right" />
                                 <i className="fx-star fx-1">✦</i>
                                 <i className="fx-star fx-2">♡</i>
                                 <i className="fx-star fx-3">✧</i>
@@ -654,6 +743,9 @@ export default function App({
                               <span className="bow right" />
                               <div className="gift-lid" />
                               <div className="gift-ribbon" />
+                              <span className="ribbon-pull-tag">
+                                🎀 Tarik pita
+                              </span>
                             </div>
                           )}
                           <span className="gift-title">{g.title}</span>
@@ -665,6 +757,22 @@ export default function App({
                         </button>
                       );
                     })}
+                  </div>
+                  <div className="gift-shake-bar">
+                    {state.opened.length < birthday.gifts.length && (
+                      <button
+                        type="button"
+                        className="secondary shake-gift-button"
+                        onClick={handleShakeGifts}
+                      >
+                        🤫 Kocok kado dulu
+                      </button>
+                    )}
+                    {giftHint && (
+                      <p className="gift-hint-note" role="status">
+                        {giftHint}
+                      </p>
+                    )}
                   </div>
                   {gift && (
                     <div
@@ -884,21 +992,45 @@ export default function App({
               {state.stage === 4 && (
                 <div className="wish-scene">
                   <div
-                    className="wish-cake"
+                    className={`wish-cake ${sparklerWand ? "sparkler-cursor-active" : ""}`}
                     onPointerMove={(e) => {
-                      if (state.candlesBlown) return;
                       const rect = e.currentTarget.getBoundingClientRect();
-                      const nx = (e.clientX - rect.left) / rect.width - 0.5;
+                      const relX = (e.clientX - rect.left) / rect.width;
+                      const relY = (e.clientY - rect.top) / rect.height;
+                      if (sparklerWand) {
+                        setSparklerPos({ x: relX, y: relY });
+                      }
+                      if (state.candlesBlown) return;
+                      const nx = relX - 0.5;
                       setFlameTilt(Math.round(nx * 14));
                     }}
-                    onPointerLeave={() => setFlameTilt(0)}
+                    onPointerLeave={() => {
+                      setFlameTilt(0);
+                      setSparklerPos(null);
+                    }}
                   >
                     <Cake
                       blown={state.candlesBlown}
                       blownDigits={blownDigits}
                       onBlowDigit={handleBlowDigit}
-                      flameTilt={flameTilt}
+                      onLightDigit={
+                        sparklerWand ? handleLightDigit : undefined
+                      }
+                      sparklerActive={sparklerWand}
+                      flameTilt={flameTilt || breathTilt}
                     />
+                    {sparklerWand && sparklerPos && (
+                      <span
+                        className="sparkler-wand-follower"
+                        style={{
+                          left: `${sparklerPos.x * 100}%`,
+                          top: `${sparklerPos.y * 100}%`,
+                        }}
+                        aria-hidden="true"
+                      >
+                        🪄<i>✦</i><i>✧</i>
+                      </span>
+                    )}
                     {state.decorations.map((d, i) => {
                       const item = decorations.find((t) => t.id === d.id)!;
                       return (
@@ -926,20 +1058,81 @@ export default function App({
                   </p>
                   {!state.candlesBlown && (
                     <p className="candle-tap-hint" aria-hidden="true">
-                      {blownDigits.some(Boolean)
-                        ? "✦ Satu lilin padam! Ketuk lilin satunya lagi atau tekan tombol di bawah"
-                        : `✦ Ketuk lilin angka ${settings.age} langsung di atas kue, atau tekan tombol`}
+                      {sparklerWand
+                        ? `🪄 Sentuh atau arahkan korek ajaib ke lilin angka ${settings.age} untuk menyalakannya!`
+                        : blownDigits.some(Boolean)
+                          ? "✦ Satu lilin padam! Tiup sekali lagi atau ketuk lilin satunya"
+                          : mic.listening
+                            ? "✦ Tiup ke arah mikrofon untuk memadamkan lilin 30, atau ketuk lilin langsung"
+                            : `✦ Ketuk lilin angka ${settings.age} langsung di atas kue, pakai mikrofon, atau tekan tombol`}
                     </p>
                   )}
                   <div className="wish-buttons">
                     {!state.candlesBlown ? (
-                      <button
-                        type="button"
-                        className="primary"
-                        onClick={handleBlowAll}
-                      >
-                        ✧ {copy.candles.blow}
-                      </button>
+                      <>
+                        <div className="wish-action-row">
+                          <button
+                            type="button"
+                            className="primary"
+                            onClick={handleBlowAll}
+                          >
+                            ✧ {copy.candles.blow}
+                          </button>
+                          {mic.supported && mic.status === "idle" && (
+                            <button
+                              type="button"
+                              className="secondary mic-button"
+                              onClick={() => void mic.start()}
+                            >
+                              🎙️ Pakai mikrofon
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={`secondary sparkler-button ${sparklerWand ? "active" : ""}`}
+                            onClick={() => {
+                              if (sparklerWand) {
+                                handleRelight();
+                              } else {
+                                handleStartSparklerLighting();
+                              }
+                            }}
+                          >
+                            {sparklerWand
+                              ? "✨ Nyalakan semua"
+                              : "🪄 Korek ajaib"}
+                          </button>
+                        </div>
+                        {mic.status === "listening" && (
+                          <div
+                            className="mic-listening-pill"
+                            role="status"
+                            aria-live="polite"
+                          >
+                            <span className="mic-listening-label">
+                              <span className="mic-dot" aria-hidden="true" />
+                              🎙️ Mikrofon aktif — tiup ke arah layar!
+                            </span>
+                            <span
+                              className="mic-meter"
+                              aria-hidden="true"
+                            >
+                              <span
+                                className="mic-meter-fill"
+                                style={{
+                                  width: `${Math.min(100, Math.round(mic.level * 100))}%`,
+                                }}
+                              />
+                            </span>
+                          </div>
+                        )}
+                        {mic.status === "denied" && (
+                          <p className="mic-status-note" role="status">
+                            Izin mikrofon ditolak — ketuk lilin langsung atau
+                            tekan tombol di atas.
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <>
                         <p className="wish-success" role="status">
@@ -954,13 +1147,22 @@ export default function App({
                             {copy.candles.next}
                             <Arrow />
                           </button>
-                          <button
-                            type="button"
-                            className="text-button relight-button"
-                            onClick={handleRelight}
-                          >
-                            ↺ Nyalakan lagi
-                          </button>
+                          <div className="wish-relight-row">
+                            <button
+                              type="button"
+                              className="text-button relight-button"
+                              onClick={handleRelight}
+                            >
+                              ↺ Nyalakan lagi
+                            </button>
+                            <button
+                              type="button"
+                              className="text-button relight-button"
+                              onClick={handleStartSparklerLighting}
+                            >
+                              🪄 Nyalakan pakai korek ajaib
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}
@@ -970,10 +1172,37 @@ export default function App({
 
               {state.stage === 5 && !finale && (
                 <div className="letter-layout">
-                  <div className="letter-illustration" aria-hidden="true">
+                  <div className="letter-illustration">
                     <Sticker name="bara_like_this" />
-                    <span className="handwritten">{copy.letter.envelope}</span>
-                    <span className="letter-heart">♡</span>
+                    <span className="handwritten" aria-hidden="true">
+                      {copy.letter.envelope}
+                    </span>
+                    <button
+                      type="button"
+                      className={`wax-seal-button ${waxSealBroken ? "seal-broken" : ""}`}
+                      aria-label="Segel lilin B 30"
+                      aria-pressed={waxSealBroken}
+                      onClick={() => {
+                        setWaxSealBroken((prev) => !prev);
+                        sound.play("wax");
+                        setBurst((n) => n + 1);
+                      }}
+                    >
+                      <span className="wax-seal-emblem" aria-hidden="true">
+                        B ♡ {settings.age}
+                      </span>
+                      <span className="wax-seal-caption">
+                        {waxSealBroken
+                          ? "✦ Segel terbuka!"
+                          : "Ketuk segel lilin"}
+                      </span>
+                    </button>
+                    {waxSealBroken && (
+                      <div className="wax-secret-note handwritten" role="status">
+                        P.S. Selamat kepala tiga, {birthday.recipient}! Babak{" "}
+                        {settings.age} resmi dimulai ♡
+                      </div>
+                    )}
                   </div>
                   <article
                     className={`letter-paper letter-flip-${letterDir}`}
@@ -1058,6 +1287,54 @@ export default function App({
                   <p className="finale-signature">
                     {copy.finale.signature} <b>{birthday.sender}</b>
                   </p>
+
+                  {/* Collectible 30th Polaroid Keepsake Card */}
+                  <div className="finale-polaroid">
+                    <span className="tape" aria-hidden="true" />
+                    <div className="polaroid-photo" aria-hidden="true">
+                      <div className="polaroid-cake-scale">
+                        <Cake blown={false} />
+                        {state.decorations.map((d, i) => {
+                          const item = decorations.find((t) => t.id === d.id)!;
+                          return (
+                            <span
+                              key={i}
+                              className={`polaroid-deco decoration-${d.id}`}
+                              style={{
+                                left: `${d.x * 100}%`,
+                                top: `${d.y * 100}%`,
+                                transform: `translate(-50%, -50%) rotate(${d.rotation}deg)`,
+                              }}
+                            >
+                              {"symbol" in item ? (
+                                item.symbol
+                              ) : (
+                                <Sticker name={item.sticker} />
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {state.caught.length > 0 && (
+                      <div className="polaroid-moods">
+                        {state.caught.map((mId) => {
+                          const mItem = birthday.moods.find(
+                            (m) => m.id === mId,
+                          );
+                          return mItem ? (
+                            <span key={mId} className="polaroid-mood-pill">
+                              ✦ {mItem.label}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                    <p className="polaroid-caption handwritten">
+                      Kue Ube {settings.age} Tahun Karya {birthday.recipient} ♡
+                    </p>
+                  </div>
+
                   <div className="finale-party-action">
                     <button
                       type="button"
@@ -1068,6 +1345,34 @@ export default function App({
                       }}
                     >
                       🎉 Rayakan {settings.age} tahun lagi!
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary polaroid-save-button"
+                      onClick={() => {
+                        const moodLabels = state.caught
+                          .map(
+                            (id) =>
+                              birthday.moods.find((m) => m.id === id)?.label ??
+                              "",
+                          )
+                          .filter(Boolean);
+                        const ok = downloadPolaroidKeepsake({
+                          recipient: birthday.recipient,
+                          sender: birthday.sender,
+                          age: settings.age,
+                          moodLabels,
+                          decorations: state.decorations,
+                        });
+                        if (ok) {
+                          setPolaroidSaved(true);
+                          sound.play("sparkle");
+                        }
+                      }}
+                    >
+                      {polaroidSaved
+                        ? "✓ Polaroid tersimpan!"
+                        : "📸 Simpan Polaroid Kenangan"}
                     </button>
                   </div>
                   <div className="revisit">
